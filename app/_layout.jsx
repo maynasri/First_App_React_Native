@@ -15,7 +15,9 @@ import Animated, {
 // Importation des écrans
 import BookList from "./book/index";
 import BookDetails from "./book/details";
-import CartScreen from "./book/cart"; // Ajout de l'écran panier
+import CartScreen from "./book/cart";
+import BookListAdmin from "./admin/BookListAdmin";
+import AddBook from "./admin/AddBook";
 
 const { width, height } = Dimensions.get("window");
 
@@ -95,23 +97,33 @@ export default function RootLayout() {
   }
 
   return (
-      <Stack.Navigator initialRouteName="BookList">
-        <Stack.Screen
-          name="BookList"
-          component={BookList}
-          options={{ title: "Accueil" }}
-        />
-        <Stack.Screen
-          name="BookDetails"
-          component={BookDetails}
-          options={{ title: "Détails du Livre" }}
-        />
-        <Stack.Screen
-          name="Cart"
-          component={CartScreen}
-          options={{ title: "Panier" }}
-        />
-      </Stack.Navigator>
+    <Stack.Navigator initialRouteName="BookListAdmin">
+      <Stack.Screen
+        name="BookList"
+        component={BookList}
+        options={{ title: "Accueil" }}
+      />
+      <Stack.Screen
+        name="BookDetails"
+        component={BookDetails}
+        options={{ title: "Détails du Livre" }}
+      />
+      <Stack.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{ title: "Panier" }}
+      />
+      <Stack.Screen
+        name="BookListAdmin"
+        component={BookListAdmin}
+        options={{ title: "Admin Page" }}
+      />
+      <Stack.Screen
+        name="AddBook"
+        component={AddBook}
+        options={{ title: "Ajouter un livre" }}
+      />
+    </Stack.Navigator>
   );
 }
 
