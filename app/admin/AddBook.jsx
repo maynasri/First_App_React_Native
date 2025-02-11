@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+// app/AddBook.jsx
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,133 +9,103 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-
-// Ouvrir la base de données
+import { addBook } from "../db/dbBooks"; // Assurez-vous que le chemin est correct
 
 export default function AddBook() {
+  const navigation = useNavigation();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const navigation = useNavigation();
+  const [image, setImage] = useState("");
 
-  /* const insertBook = (title, description, price) => {
-    db.transaction(
-      (tx) => {
-        tx.executeSql(
-          "INSERT INTO books (title, description, price) VALUES (?, ?, ?);",
-          [title, description, price],
-          (_, result) => {
-            console.log("Livre ajouté avec succès ! ID :", result.insertId);
-            Alert.alert("Succès", "Livre ajouté avec succès !");
-          },
-          (_, error) => {
-            console.log("Erreur lors de l'insertion :", error);
-            Alert.alert("Erreur", "Erreur lors de l'insertion du livre");
-          }
-        );
-      },
-      (error) => {
-        console.log("Erreur de transaction:", error);
-        Alert.alert("Erreur", "Erreur de transaction");
-      },
-      () => console.log("Transaction réussie")
-    );
-  };
- */
-  const handleSubmit = () => {
-    console.log({ title, description, price });
-    if (title && description && price) {
-      /*       insertBook(title, description, price);
-       */ navigation.goBack(); // Retourner à la page précédente après l'ajout
-    } else {
-      Alert.alert("Erreur", "Veuillez remplir tous les champs");
+  // Fonction pour gérer l'ajout d'un livre
+  const handleAddBook = () => {
+    if (title.trim() === "" || description.trim() === "") {
+      Alert.alert(
+        "Champs manquants",
+        "Veuillez remplir tous les champs requis"
+      );
+      return;
     }
+
+    // Appel à la fonction addBook du module de base de données
+    addBook(title, description, image, (success, insertId) => {
+      if (success) {
+        Alert.alert("Succès", "Livre ajouté avec succès", [
+          {
+            text: "OK",
+            onPress: () => navigation.goBack(),
+          },
+        ]);
+      } else {
+        Alert.alert("Erreur", "L'ajout du livre a échoué");
+      }
+    });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Ajouter un Livre</Text>
-
+      <Text style={styles.label}>Titre</Text>
       <TextInput
         style={styles.input}
-        placeholder="Titre du livre"
+        placeholder="Entrez le titre du livre"
         value={title}
         onChangeText={setTitle}
       />
 
+      <Text style={styles.label}>Description</Text>
       <TextInput
-        style={styles.input}
-        placeholder="Description"
+        style={[styles.input, styles.multilineInput]}
+        placeholder="Entrez la description du livre"
         value={description}
         onChangeText={setDescription}
         multiline
       />
 
+      <Text style={styles.label}>URL de l'image</Text>
       <TextInput
         style={styles.input}
-        placeholder="Prix"
-        value={price}
-        onChangeText={setPrice}
-        keyboardType="numeric"
+        placeholder="Entrez l'URL de l'image du livre"
+        value={image}
+        onChangeText={setImage}
       />
 
-      <TouchableOpacity style={styles.addButton} onPress={handleSubmit}>
-        <Text style={styles.addButtonText}>Ajouter</Text>
-      </TouchableOpacity>
-
-      {/* Bouton Retour */}
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.backText}>Retour</Text>
+      <TouchableOpacity style={styles.button} onPress={handleAddBook}>
+        <Text style={styles.buttonText}>Ajouter le livre</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
     backgroundColor: "#fff",
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 16,
+  label: {
+    fontSize: 16,
+    marginBottom: 4,
+    color: "#333",
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
+    borderRadius: 4,
     padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    fontSize: 16,
+    marginBottom: 16,
   },
-  addButton: {
-    backgroundColor: "#007bff",
-    padding: 12,
-    borderRadius: 8,
+  multilineInput: {
+    height: 100,
+    textAlignVertical: "top", // Pour Android, afin que le texte commence en haut
+  },
+  button: {
+    backgroundColor: "#ff6600",
+    padding: 16,
+    borderRadius: 4,
     alignItems: "center",
-    marginTop: 10,
   },
-  addButtonText: {
+  buttonText: {
     color: "#fff",
-    fontSize: 16,
     fontWeight: "bold",
-  },
-  backButton: {
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: "#888",
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  backText: {
-    color: "#fff",
-    fontSize: 16,
   },
 });
