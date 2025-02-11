@@ -1,40 +1,41 @@
 // EditBook.jsx
 import React, { useState } from "react";
-import { View, TextInput, Button, StyleSheet, Text } from "react-native";
+import { View, TextInput, Button, StyleSheet, Text, TouchableOpacity } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { updateBook } from "../db/dbBooks";
 
 export default function EditBook() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { book } = route.params; // Les données du livre à éditer
+  const { book } = route.params; // The book data to be edited
 
   const [title, setTitle] = useState(book.title);
   const [description, setDescription] = useState(book.description);
   const [image, setImage] = useState(book.image);
-  const [price, setPrice] = useState(String(book.price)); // Assurez-vous que c'est une chaîne
+  const [price, setPrice] = useState(String(book.price)); // Ensure it's a string
 
   const handleUpdate = () => {
     if (title && description) {
-      // Mise à jour du livre dans la base de données
+      // Update the book in the database
       updateBook(book.id, title, description, image, price, (success) => {
         if (success) {
-          alert("Livre mis à jour avec succès");
+          alert("Book updated successfully");
         } else {
-          alert("Échec de la mise à jour du livre");
+          alert("Failed to update the book");
         }
       });
     } else {
-      alert("Veuillez remplir tous les champs.");
+      alert("Please fill in all fields.");
     }
   };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Modifier le Livre</Text>
+      <Text style={styles.title}>Edit Book</Text>
 
       <TextInput
         style={styles.input}
-        placeholder="Titre"
+        placeholder="Title"
         value={title}
         onChangeText={setTitle}
       />
@@ -46,20 +47,28 @@ export default function EditBook() {
       />
       <TextInput
         style={styles.input}
-        placeholder="URL de l'image"
+        placeholder="Image URL"
         value={image}
         onChangeText={setImage}
       />
       <TextInput
         style={styles.input}
-        placeholder="Prix"
+        placeholder="Price"
         value={price}
         keyboardType="numeric"
         onChangeText={setPrice}
       />
 
-      <Button title="Mettre à jour" onPress={handleUpdate} />
-      <Button title="Annuler" onPress={() => navigation.goBack()} color="red" />
+      <TouchableOpacity style={styles.button} onPress={handleUpdate}>
+        <Text style={styles.buttonText}>Update</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, styles.cancelButton]}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={[styles.buttonText, styles.cancelButtonText]}>Cancel</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -71,15 +80,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
-    marginBottom: 20,
+    color: "#333",
+    marginBottom: 30,
+    textAlign: "center",
   },
   input: {
-    height: 40,
+    height: 50,
     borderColor: "#ccc",
     borderWidth: 1,
-    marginBottom: 12,
-    paddingHorizontal: 8,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+    fontSize: 16,
+    color: "#333",
+  },
+  button: {
+    backgroundColor: "#ff6600",
+    paddingVertical: 15,
+    borderRadius: 8,
+    marginVertical: 10,
+    alignItems: "center",
+  },
+  buttonText: {
+    fontSize: 18,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  cancelButton: {
+    backgroundColor: "#ccc",
+  },
+  cancelButtonText: {
+    color: "#333",
   },
 });

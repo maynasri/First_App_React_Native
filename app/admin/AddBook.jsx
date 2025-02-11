@@ -1,4 +1,3 @@
-// app/AddBook.jsx
 import React, { useState } from "react";
 import {
   View,
@@ -9,16 +8,16 @@ import {
   Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { addBook } from "../db/dbBooks"; // Assurez-vous que le chemin est correct
+import { addBook } from "../db/dbBooks";
 
-export default function AddBook() {
+export default function AddBook({ route }) {
   const navigation = useNavigation();
+  const { refreshBooks } = route.params;  // Get the refreshBooks function from the navigation params
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
-  const [price, setPrice] = useState(""); // Nouveau champ pour le prix
+  const [price, setPrice] = useState("");
 
-  // Fonction pour gérer l'ajout d'un livre
   const handleAddBook = () => {
     if (
       title.trim() === "" ||
@@ -32,20 +31,21 @@ export default function AddBook() {
       return;
     }
 
-    // Convertir le prix en nombre
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice) || parsedPrice <= 0) {
       Alert.alert("Prix invalide", "Veuillez entrer un prix valide");
       return;
     }
 
-    // Appel à la fonction addBook du module de base de données
-    addBook(title, description, image, parsedPrice, (success, insertId) => {
+    addBook(title, description, image, parsedPrice, (success) => {
       if (success) {
         Alert.alert("Succès", "Livre ajouté avec succès", [
           {
             text: "OK",
-            onPress: () => navigation.goBack(),
+            onPress: () => {
+              refreshBooks(); // Refresh the list of books
+              navigation.goBack(); // Go back to the previous screen
+            },
           },
         ]);
       } else {
@@ -56,6 +56,8 @@ export default function AddBook() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.header}>Ajouter un Livre</Text>
+
       <Text style={styles.label}>Titre</Text>
       <TextInput
         style={styles.input}
@@ -81,13 +83,13 @@ export default function AddBook() {
         onChangeText={setImage}
       />
 
-      <Text style={styles.label}>Prix</Text>
+      <Text style={styles.label}>Prix (€)</Text>
       <TextInput
         style={styles.input}
         placeholder="Entrez le prix du livre"
         value={price}
         onChangeText={setPrice}
-        keyboardType="numeric" // Pour s'assurer que l'utilisateur entre un nombre
+        keyboardType="numeric"
       />
 
       <TouchableOpacity style={styles.button} onPress={handleAddBook}>
@@ -100,33 +102,48 @@ export default function AddBook() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: "#fff",
+    padding: 20,
+    backgroundColor: "#f8f8f8",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 30,
+    textAlign: "center",
   },
   label: {
     fontSize: 16,
-    marginBottom: 4,
+    marginBottom: 8,
     color: "#333",
   },
   input: {
+    width: "100%",
+    padding: 14,
+    borderRadius: 8,
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    padding: 12,
+    borderColor: "#ddd",
     marginBottom: 16,
+    fontSize: 16,
   },
   multilineInput: {
-    height: 100,
+    height: 120,
     textAlignVertical: "top", // Pour Android, afin que le texte commence en haut
   },
   button: {
     backgroundColor: "#ff6600",
-    padding: 16,
-    borderRadius: 4,
+    padding: 14,
+    borderRadius: 8,
     alignItems: "center",
+    width: "100%",
+    marginTop: 20,
   },
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: 18,
   },
 });
