@@ -28,16 +28,21 @@ const openDatabase = Platform.select({
                 title: params[0],
                 description: params[1],
                 image: params[2],
+                price: params[3],
               };
 
               existingData.push(newData);
               await localforage.setItem(tableName, existingData);
               console.log("Data inserted (simulated):", newData);
-              // On renvoie aussi l'insertId pour être cohérent avec la version mobile
               successCallback(null, { rowsAffected: 1, insertId: newData.id });
             } else if (sql.startsWith("SELECT")) {
               const tableName = sql.match(/FROM (\w+)/)[1];
-              const data = (await localforage.getItem(tableName)) || [];
+              let data = (await localforage.getItem(tableName)) || [];
+              // Si la requête contient un filtre sur l'ID, on le prend en compte
+              if (sql.includes("WHERE id = ?")) {
+                const idToFilter = params[0];
+                data = data.filter((item) => item.id === idToFilter);
+              }
               console.log("Data fetched (simulated):", data);
               successCallback(null, {
                 rows: {
@@ -54,8 +59,9 @@ const openDatabase = Platform.select({
               console.log("Data deleted (simulated)");
               successCallback(null, { rowsAffected: 1 });
             } else if (sql.startsWith("UPDATE")) {
+              // CORRECTION : l'ID se trouve à l'index 4
               const tableName = sql.match(/UPDATE (\w+)/)[1];
-              const id = params[3];
+              const id = params[4];
               let existingData = (await localforage.getItem(tableName)) || [];
               existingData = existingData.map((item) =>
                 item.id === id
@@ -64,6 +70,7 @@ const openDatabase = Platform.select({
                       title: params[0],
                       description: params[1],
                       image: params[2],
+                      price: params[3],
                     }
                   : item
               );
@@ -88,7 +95,7 @@ const openDatabase = Platform.select({
 // Fonctions CRUD exportées
 // ------------------------------
 
-// 📌 Créer la table Books
+// Créer la table Books avec la colonne price
 export const createTable = () => {
   openDatabase.transaction((tx) => {
     tx.executeSql(
@@ -96,16 +103,17 @@ export const createTable = () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
         description TEXT,
-        image TEXT
+        image TEXT,
+        price REAL
       )`,
       [],
-      () => console.log("Table created successfully"),
+      () => console.log("Table created successfully with price column"),
       (tx, error) => console.log("Error creating table:", error.message)
     );
   });
 };
 
-// 📌 Récupérer tous les livres
+// Récupérer tous les livres
 export const getBooks = (callback) => {
   openDatabase.transaction((tx) => {
     tx.executeSql(
@@ -127,12 +135,12 @@ export const getBooks = (callback) => {
   });
 };
 
-// 📌 Ajouter un livre
-export const addBook = (title, description, image, callback) => {
+// Ajouter un livre avec un prix
+export const addBook = (title, description, image, price, callback) => {
   openDatabase.transaction((tx) => {
     tx.executeSql(
-      "INSERT INTO Books (title, description, image) VALUES (?, ?, ?)",
-      [title, description, image],
+      "INSERT INTO Books (title, description, image, price) VALUES (?, ?, ?, ?)",
+      [title, description, image, price],
       (_, result) => {
         console.log("Insertion réussie, ID:", result.insertId);
         callback(true, result.insertId);
@@ -145,32 +153,54 @@ export const addBook = (title, description, image, callback) => {
   });
 };
 
-// 📌 Supprimer un livre
+// Supprimer un livre
 export const deleteBook = (id, callback) => {
-  console.log("Attempting to delete book with ID:", id);
+  const idToDelete = Number(id);
+  console.log("Attempting to delete book with ID:", idToDelete);
   openDatabase.transaction((tx) => {
     tx.executeSql(
       "DELETE FROM Books WHERE id = ?",
-      [id],
+      [idToDelete],
       (tx, results) => {
         console.log("Delete results:", results);
         callback(results.rowsAffected > 0);
       },
-      (tx, error) => console.log("Error deleting book:", error.message)
+      (tx, error) => {
+        console.log("Error deleting book:", error.message);
+      }
     );
   });
 };
 
-// 📌 Mettre à jour un livre
-export const updateBook = (id, title, description, image, callback) => {
+// Mettre à jour un livre
+export const updateBook = (id, title, description, image, price, callback) => {
+  console.log(
+    "Appel de updateBook avec les paramètres:",
+    id,
+    title,
+    description,
+    image,
+    price
+  );
+
   openDatabase.transaction((tx) => {
     tx.executeSql(
-      "UPDATE Books SET title = ?, description = ?, image = ? WHERE id = ?",
-      [title, description, image, id],
+      "UPDATE Books SET title = ?, description = ?, image = ?, price = ? WHERE id = ?",
+      [title, description, image, price, id],
       (tx, results) => {
-        callback(results.rowsAffected > 0);
+        console.log("Résultats de la mise à jour:", results);
+        if (results.rowsAffected > 0) {
+          console.log("Livre mis à jour avec succès");
+          callback(true);
+        } else {
+          console.log("Aucune ligne mise à jour. Vérifiez l'ID.");
+          callback(false);
+        }
       },
-      (tx, error) => console.log("Error updating book:", error.message)
+      (tx, error) => {
+        console.error("Erreur lors de l'update:", error.message);
+        callback(false);
+      }
     );
   });
 };

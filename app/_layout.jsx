@@ -18,6 +18,7 @@ import BookDetails from "./book/details";
 import CartScreen from "./book/cart";
 import BookListAdmin from "./admin/BookListAdmin";
 import AddBook from "./admin/AddBook";
+import EditBook from "./admin/editBook";
 
 const { width, height } = Dimensions.get("window");
 
@@ -122,6 +123,11 @@ export default function RootLayout() {
         name="AddBook"
         component={AddBook}
         options={{ title: "Ajouter un livre" }}
+      />
+      <Stack.Screen
+        name="EditBook"
+        component={EditBook}
+        options={{ title: "Modifier un livre" }}
       />
     </Stack.Navigator>
   );

@@ -1,4 +1,4 @@
-// BookListAdmin.jsx
+// app/BookListAdmin.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
@@ -6,13 +6,17 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
-  Alert,
+  Modal,
+  Pressable,
+  Image,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { createTable, getBooks, deleteBook } from "../db/dbBooks";
+import { createTable, getBooks, deleteBook } from "../db/dbBooks"; // Ajustez le chemin selon votre organisation
 
 export default function BookListAdmin() {
   const [books, setBooks] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [bookToDelete, setBookToDelete] = useState(null);
   const navigation = useNavigation();
 
   // Initialisation : création de la table puis chargement des livres
@@ -28,43 +32,46 @@ export default function BookListAdmin() {
     });
   }, []);
 
-  // Suppression d'un livre
+  // Fonction de suppression avec confirmation via le modal
   const handleDeleteBook = (id) => {
-    Alert.alert("Delete Book", "Are you sure you want to delete this book?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => {
-          deleteBook(id, (success) => {
-            if (success) {
-              loadBooks();
-              Alert.alert("Success", "Book deleted successfully");
-            } else {
-              Alert.alert("Error", "Failed to delete book");
-            }
-          });
-        },
-      },
-    ]);
+    setBookToDelete(id);
+    setShowModal(true);
+  };
+
+  // Confirmer la suppression
+  const confirmDelete = () => {
+    if (bookToDelete) {
+      deleteBook(bookToDelete, (success) => {
+        if (success) {
+          loadBooks();
+        } else {
+          alert("La suppression a échoué.");
+        }
+        setShowModal(false); // Ferme le modal après la suppression
+      });
+    }
+  };
+
+  // Annuler la suppression
+  const cancelDelete = () => {
+    setShowModal(false); // Ferme le modal sans supprimer
   };
 
   // Rendu d'un item (livre)
   const renderBookItem = ({ item }) => (
     <View style={styles.card}>
-      <TouchableOpacity
-        style={styles.cardContent}
-        onPress={() => navigation.navigate("BookDetails", { book: item })}
-      >
+      <View style={styles.cardContent}>
         <View style={styles.textContainer}>
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.description} numberOfLines={2}>
             {item.description}
           </Text>
-          {/* Si 'price' existe dans vos données, sinon vous pouvez retirer cette ligne */}
+          {item.image && (
+            <Image source={{ uri: item.image }} style={styles.image} />
+          )}
           {item.price && <Text style={styles.price}>{item.price} €</Text>}
         </View>
-      </TouchableOpacity>
+      </View>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -104,6 +111,31 @@ export default function BookListAdmin() {
           </View>
         }
       />
+
+      {/* Modal pour confirmer la suppression */}
+      <Modal
+        visible={showModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={cancelDelete}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Confirmer la suppression</Text>
+            <Text style={styles.modalText}>
+              Êtes-vous sûr de vouloir supprimer ce livre ?
+            </Text>
+            <View style={styles.modalButtons}>
+              <Pressable style={styles.modalButton} onPress={cancelDelete}>
+                <Text style={styles.modalButtonText}>Annuler</Text>
+              </Pressable>
+              <Pressable style={styles.modalButton} onPress={confirmDelete}>
+                <Text style={styles.modalButtonText}>Supprimer</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -161,6 +193,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#ff6600",
   },
+  image: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginVertical: 10,
+  },
   buttonContainer: {
     flexDirection: "row",
     borderTopWidth: 1,
@@ -190,5 +228,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     textAlign: "center",
+  },
+
+  // Styles du Modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 10,
+    width: "80%",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+  },
+  modalButton: {
+    backgroundColor: "#ff6600",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontSize: 16,
   },
 });

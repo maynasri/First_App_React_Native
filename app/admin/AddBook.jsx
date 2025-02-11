@@ -16,10 +16,15 @@ export default function AddBook() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [price, setPrice] = useState(""); // Nouveau champ pour le prix
 
   // Fonction pour gérer l'ajout d'un livre
   const handleAddBook = () => {
-    if (title.trim() === "" || description.trim() === "") {
+    if (
+      title.trim() === "" ||
+      description.trim() === "" ||
+      price.trim() === ""
+    ) {
       Alert.alert(
         "Champs manquants",
         "Veuillez remplir tous les champs requis"
@@ -27,8 +32,15 @@ export default function AddBook() {
       return;
     }
 
+    // Convertir le prix en nombre
+    const parsedPrice = parseFloat(price);
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
+      Alert.alert("Prix invalide", "Veuillez entrer un prix valide");
+      return;
+    }
+
     // Appel à la fonction addBook du module de base de données
-    addBook(title, description, image, (success, insertId) => {
+    addBook(title, description, image, parsedPrice, (success, insertId) => {
       if (success) {
         Alert.alert("Succès", "Livre ajouté avec succès", [
           {
@@ -67,6 +79,15 @@ export default function AddBook() {
         placeholder="Entrez l'URL de l'image du livre"
         value={image}
         onChangeText={setImage}
+      />
+
+      <Text style={styles.label}>Prix</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Entrez le prix du livre"
+        value={price}
+        onChangeText={setPrice}
+        keyboardType="numeric" // Pour s'assurer que l'utilisateur entre un nombre
       />
 
       <TouchableOpacity style={styles.button} onPress={handleAddBook}>
