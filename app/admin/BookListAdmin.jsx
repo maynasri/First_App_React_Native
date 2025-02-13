@@ -19,7 +19,7 @@ export default function BookListAdmin() {
   const navigation = useNavigation();
 
   useEffect(() => {
-    createTable(); 
+    createTable();
     loadBooks();
   }, []);
 
@@ -53,13 +53,14 @@ export default function BookListAdmin() {
 
   const renderBookItem = ({ item }) => (
     <View style={styles.card}>
+      <Image source={{ uri: item.image }} style={styles.image} />
       <View style={styles.cardContent}>
         <View style={styles.textContainer}>
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.description} numberOfLines={2}>
             {item.description}
           </Text>
-          
+
           {item.price && <Text style={styles.price}>{item.price} €</Text>}
         </View>
       </View>
@@ -67,7 +68,12 @@ export default function BookListAdmin() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={[styles.actionButton, styles.editButton]}
-          onPress={() => navigation.navigate("EditBook", { book: item, refreshBooks: loadBooks })}
+          onPress={() =>
+            navigation.navigate("EditBook", {
+              book: item,
+              refreshBooks: loadBooks,
+            })
+          }
         >
           <Text style={styles.buttonText}>Edit</Text>
         </TouchableOpacity>
@@ -86,7 +92,9 @@ export default function BookListAdmin() {
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => navigation.navigate("AddBook", { refreshBooks: loadBooks })}
+        onPress={() =>
+          navigation.navigate("AddBook", { refreshBooks: loadBooks })
+        }
       >
         <Text style={styles.addButtonText}>+</Text>
       </TouchableOpacity>

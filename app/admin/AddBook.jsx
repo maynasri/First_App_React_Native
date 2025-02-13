@@ -12,7 +12,7 @@ import { addBook } from "../db/dbBooks";
 
 export default function AddBook({ route }) {
   const navigation = useNavigation();
-  const { refreshBooks } = route.params;  // Get the refreshBooks function from the navigation params
+  const { refreshBooks } = route.params; // Get the refreshBooks function from the navigation params
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
@@ -38,19 +38,9 @@ export default function AddBook({ route }) {
     }
 
     addBook(title, description, image, parsedPrice, (success) => {
-      if (success) {
-        Alert.alert("Succès", "Livre ajouté avec succès", [
-          {
-            text: "OK",
-            onPress: () => {
-              refreshBooks(); // Refresh the list of books
-              navigation.goBack(); // Go back to the previous screen
-            },
-          },
-        ]);
-      } else {
-        Alert.alert("Erreur", "L'ajout du livre a échoué");
-      }
+      refreshBooks(); // Refresh the list of books
+      navigation.navigate("AdminBookList");
+      window.location.reload();
     });
   };
 

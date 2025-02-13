@@ -1,6 +1,13 @@
 // EditBook.jsx
 import React, { useState } from "react";
-import { View, TextInput, Button, StyleSheet, Text, TouchableOpacity } from "react-native";
+import {
+  View,
+  TextInput,
+  Button,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+} from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { updateBook } from "../db/dbBooks";
 
@@ -18,11 +25,14 @@ export default function EditBook() {
     if (title && description) {
       // Update the book in the database
       updateBook(book.id, title, description, image, price, (success) => {
-        if (success) {
+        window.location.reload();
+
+        /*      if (success) {
           alert("Book updated successfully");
         } else {
           alert("Failed to update the book");
         }
+      */
       });
     } else {
       alert("Please fill in all fields.");
