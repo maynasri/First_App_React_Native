@@ -15,7 +15,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
-    "@expo/vector-icons": "^14.0.2",
+    "@expo/vector-icons": "^14.0.4",
     "@expo/webpack-config": "^19.0.1",
     "@react-native-async-storage/async-storage": "^2.1.1",
     "@react-native-community/cli": "latest",

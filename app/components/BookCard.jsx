@@ -1,4 +1,3 @@
-// components/BookCard.js
 import React from "react";
 import {
   View,
@@ -43,14 +42,14 @@ const BookCard = ({ book, onPress, isAdmin = false, onEdit, onDelete }) => {
         <View style={styles.adminControls}>
           <TouchableOpacity
             style={[styles.iconButton, styles.editButton]}
-            onPress={() => onEdit(book)}
+            onPress={() => onEdit && onEdit(book)}
           >
             <MaterialIcons name="edit" size={18} color="#fff" />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.iconButton, styles.deleteButton]}
-            onPress={() => onDelete(book.id)}
+            onPress={() => onDelete && onDelete(book.id)}
           >
             <MaterialIcons name="delete" size={18} color="#fff" />
           </TouchableOpacity>

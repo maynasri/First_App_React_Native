@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Provider } from "react-redux";
+import { store } from "./redux/store";
 import * as SplashScreen from "expo-splash-screen";
 import { View, StyleSheet, Dimensions } from "react-native";
 import Animated, {
@@ -18,7 +19,7 @@ import BookDetails from "./book/details";
 import CartScreen from "./book/cart";
 import BookListAdmin from "./admin/BookListAdmin";
 import AddBook from "./admin/AddBook";
-import EditBook from "./admin/editBook"; // Assurez-vous que le nom du fichier correspond exactement
+import EditBook from "./admin/editBook";
 import Login from "./components/login";
 
 const { width, height } = Dimensions.get("window");
@@ -122,69 +123,65 @@ const SplashComponent = ({ onFinish }) => {
   );
 };
 
-// Composant AppNavigator séparé pour la navigation
-const AppNavigator = () => {
-  return (
-    <Stack.Navigator initialRouteName="Login">
-      {/* Écran de login ajouté comme écran initial */}
-      <Stack.Screen
-        name="Login"
-        component={Login}
-        options={{ headerShown: false }}
-      />
-
-      {/* Écrans utilisateur */}
-      <Stack.Screen
-        name="BookList"
-        component={BookList}
-        options={{ title: "Accueil" }}
-      />
-      <Stack.Screen
-        name="BookDetails"
-        component={BookDetails}
-        options={{ title: "Détails du Livre" }}
-      />
-      <Stack.Screen
-        name="Cart"
-        component={CartScreen}
-        options={{ title: "Panier" }}
-      />
-
-      {/* Écrans administrateur */}
-      <Stack.Screen
-        name="BookListAdmin"
-        component={BookListAdmin}
-        options={{ title: "Admin Page" }}
-      />
-      <Stack.Screen
-        name="AddBook"
-        component={AddBook}
-        options={{ title: "Ajouter un livre" }}
-      />
-      <Stack.Screen
-        name="EditBook"
-        component={EditBook}
-        options={{ title: "Modifier un livre" }}
-      />
-    </Stack.Navigator>
-  );
-};
-
-// Composant principal
-export default function RootLayout() {
+// Composant principal - UNIQUEMENT avec Provider Redux (sans NavigationContainer)
+const RootLayout = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
 
   const handleSplashFinish = () => {
     setIsSplashVisible(false);
   };
 
-  // Rendu
   if (isSplashVisible) {
     return <SplashComponent onFinish={handleSplashFinish} />;
   }
 
-  return <AppNavigator />;
-}
+  return (
+    <Provider store={store}>
+      <Stack.Navigator initialRouteName="Login">
+        {/* Écran de login ajouté comme écran initial */}
+        <Stack.Screen
+          name="Login"
+          component={Login}
+          options={{ headerShown: false }}
+        />
+
+        {/* Écrans utilisateur */}
+        <Stack.Screen
+          name="BookList"
+          component={BookList}
+          options={{ title: "Accueil" }}
+        />
+        <Stack.Screen
+          name="BookDetails"
+          component={BookDetails}
+          options={{ title: "Détails du Livre" }}
+        />
+        <Stack.Screen
+          name="Cart"
+          component={CartScreen}
+          options={{ title: "Panier" }}
+        />
+
+        {/* Écrans administrateur */}
+        <Stack.Screen
+          name="BookListAdmin"
+          component={BookListAdmin}
+          options={{ title: "Admin Page" }}
+        />
+        <Stack.Screen
+          name="AddBook"
+          component={AddBook}
+          options={{ title: "Ajouter un livre" }}
+        />
+        <Stack.Screen
+          name="EditBook"
+          component={EditBook}
+          options={{ title: "Modifier un livre" }}
+        />
+      </Stack.Navigator>
+    </Provider>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -217,3 +214,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
+export default RootLayout;
