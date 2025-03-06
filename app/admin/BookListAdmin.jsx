@@ -3,278 +3,259 @@ import {
   View,
   Text,
   FlatList,
-  TouchableOpacity,
   StyleSheet,
-  Modal,
-  Pressable,
-  Image,
+  TouchableOpacity,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { createTable, getBooks, deleteBook } from "../db/dbBooks";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { BookService } from "../db/api";
+import BookCard from "../components/BookCard";
+import NetInfo from "@react-native-community/netinfo";
 
-export default function BookListAdmin() {
+const BookListAdmin = ({ navigation }) => {
   const [books, setBooks] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [bookToDelete, setBookToDelete] = useState(null);
-  const navigation = useNavigation();
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
-  useEffect(() => {
-    createTable();
-    loadBooks();
-  }, []);
-
-  const loadBooks = useCallback(() => {
-    getBooks((booksData) => {
-      setBooks(booksData);
-    });
-  }, []);
-
-  const handleDeleteBook = (id) => {
-    setBookToDelete(id);
-    setShowModal(true);
-  };
-
-  const confirmDelete = () => {
-    if (bookToDelete) {
-      deleteBook(bookToDelete, (success) => {
-        if (success) {
-          loadBooks();
-        } else {
-          alert("La suppression a échoué.");
-        }
-        setShowModal(false);
-      });
+  // Charger les livres
+  const loadBooks = async () => {
+    try {
+      const bookData = await BookService.getBooks();
+      setBooks(bookData);
+    } catch (error) {
+      console.error("Erreur lors du chargement des livres:", error);
+      Alert.alert(
+        "Erreur",
+        "Impossible de charger les livres. Veuillez réessayer."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const cancelDelete = () => {
-    setShowModal(false);
+  // Vérifier la connexion
+  const checkConnection = async () => {
+    const netInfo = await NetInfo.fetch();
+    setIsOnline(netInfo.isConnected && netInfo.isInternetReachable);
   };
 
-  const renderBookItem = ({ item }) => (
-    <View style={styles.card}>
-      <Image source={{ uri: item.image }} style={styles.image} />
-      <View style={styles.cardContent}>
-        <View style={styles.textContainer}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.description} numberOfLines={2}>
-            {item.description}
-          </Text>
+  // Rafraîchir la liste
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    checkConnection();
+    loadBooks();
+  }, []);
 
-          {item.price && <Text style={styles.price}>{item.price} €</Text>}
-        </View>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.editButton]}
-          onPress={() =>
-            navigation.navigate("EditBook", {
-              book: item,
-              refreshBooks: loadBooks,
-            })
-          }
-        >
-          <Text style={styles.buttonText}>Edit</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDeleteBook(item.id)}
-        >
-          <Text style={styles.buttonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+  // Charger les livres à chaque fois que l'écran est affiché
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      checkConnection();
+      loadBooks();
+    }, [])
   );
+
+  // Naviguer vers l'écran d'ajout de livre
+  const handleAddBook = () => {
+    navigation.navigate("AddBook");
+  };
+
+  // Naviguer vers l'écran de modification de livre
+  const handleEditBook = (book) => {
+    navigation.navigate("EditBook", { book });
+  };
+
+  // Supprimer un livre
+  const handleDeleteBook = (bookId) => {
+    Alert.alert("Confirmation", "Voulez-vous vraiment supprimer ce livre ?", [
+      { text: "Annuler", style: "cancel" },
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const result = await BookService.deleteBook(bookId);
+            if (result.success) {
+              // Mettre à jour la liste locale
+              setBooks(books.filter((book) => book.id !== bookId));
+              Alert.alert("Succès", "Livre supprimé avec succès");
+            } else {
+              Alert.alert("Erreur", "Échec de la suppression du livre");
+            }
+          } catch (error) {
+            console.error("Erreur lors de la suppression:", error);
+            Alert.alert(
+              "Erreur",
+              "Une erreur est survenue lors de la suppression"
+            );
+          }
+        },
+      },
+    ]);
+  };
+
+  // Afficher les détails d'un livre
+  const handleBookPress = (book) => {
+    navigation.navigate("BookDetails", { bookId: book.id });
+  };
+
+  // Rendu de l'interface
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#3498db" />
+        <Text style={styles.loadingText}>Chargement des livres...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() =>
-          navigation.navigate("AddBook", { refreshBooks: loadBooks })
-        }
-      >
-        <Text style={styles.addButtonText}>+</Text>
-      </TouchableOpacity>
+      {/* Indicateur de mode (Online/Offline) */}
+      <View style={styles.connectionStatus}>
+        <View
+          style={[
+            styles.statusIndicator,
+            isOnline ? styles.online : styles.offline,
+          ]}
+        />
+        <Text style={styles.statusText}>
+          {isOnline ? "En ligne (JSON Server)" : "Hors ligne (SQLite)"}
+        </Text>
+      </View>
 
-      <FlatList
-        data={books}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={renderBookItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No books available</Text>
-          </View>
-        }
-      />
+      {/* En-tête */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Bibliothèque</Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddBook}>
+          <MaterialIcons name="add" size={24} color="#fff" />
+          <Text style={styles.addButtonText}>Nouveau</Text>
+        </TouchableOpacity>
+      </View>
 
-      <Modal
-        visible={showModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={cancelDelete}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirmer la suppression</Text>
-            <Text style={styles.modalText}>
-              Êtes-vous sûr de vouloir supprimer ce livre ?
-            </Text>
-            <View style={styles.modalButtons}>
-              <Pressable style={styles.modalButton} onPress={cancelDelete}>
-                <Text style={styles.modalButtonText}>Annuler</Text>
-              </Pressable>
-              <Pressable style={styles.modalButton} onPress={confirmDelete}>
-                <Text style={styles.modalButtonText}>Supprimer</Text>
-              </Pressable>
-            </View>
-          </View>
+      {/* Liste des livres */}
+      {books.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyText}>Aucun livre dans la bibliothèque</Text>
+          <TouchableOpacity style={styles.emptyButton} onPress={handleAddBook}>
+            <Text style={styles.emptyButtonText}>Ajouter un livre</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      ) : (
+        <FlatList
+          data={books}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <BookCard
+              book={item}
+              onPress={handleBookPress}
+              isAdmin={true}
+              onEdit={handleEditBook}
+              onDelete={handleDeleteBook}
+            />
+          )}
+          numColumns={2}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#3498db"]}
+            />
+          }
+        />
+      )}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    paddingHorizontal: 16,
+    backgroundColor: "#f8f9fa",
   },
-  listContainer: {
-    paddingTop: 80,
-  },
-  addButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    backgroundColor: "#ff6600",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: "center",
-    alignItems: "center",
-    elevation: 5,
-    zIndex: 1,
-  },
-  addButtonText: {
-    fontSize: 36,
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    marginBottom: 16,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  textContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-  },
-  price: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#ff6600",
-  },
-  image: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    marginVertical: 10,
-  },
-  buttonContainer: {
+  connectionStatus: {
     flexDirection: "row",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    justifyContent: "center",
     alignItems: "center",
-    borderRadius: 8,
-  },
-  editButton: {
+    padding: 8,
     backgroundColor: "#f0f0f0",
   },
-  deleteButton: {
-    backgroundColor: "#fee",
+  statusIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
   },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: "600",
+  online: {
+    backgroundColor: "#4CAF50",
+  },
+  offline: {
+    backgroundColor: "#FF9800",
+  },
+  statusText: {
+    fontSize: 12,
+    color: "#555",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
     color: "#333",
   },
-  emptyContainer: {
+  addButton: {
+    flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#3498db",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  centered: {
+    flex: 1,
     justifyContent: "center",
-    padding: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: "#666",
   },
   emptyText: {
     fontSize: 18,
     color: "#888",
-    textAlign: "center",
-  },
-
-  // Styles du Modal
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 12,
-    width: "80%",
-    alignItems: "center",
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  modalText: {
-    fontSize: 16,
     marginBottom: 20,
-    color: "#333",
   },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "100%",
-  },
-  modalButton: {
-    backgroundColor: "#ff6600",
-    paddingVertical: 12,
+  emptyButton: {
+    backgroundColor: "#3498db",
     paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 8,
   },
-  modalButtonText: {
+  emptyButtonText: {
     color: "#fff",
+    fontWeight: "600",
     fontSize: 16,
   },
 });
+
+export default BookListAdmin;

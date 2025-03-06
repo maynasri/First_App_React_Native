@@ -48,7 +48,6 @@ export default function BookDetails({ route }) {
 
   return (
     <View style={styles.container}>
-      <Image source={book.image} style={styles.image} />
       <Text style={styles.title}>{book.title}</Text>
       <Text style={styles.author}>{book.author}</Text>
       <Text style={styles.description}>{book.description}</Text>

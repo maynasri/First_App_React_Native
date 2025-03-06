@@ -19,6 +19,7 @@ import CartScreen from "./book/cart";
 import BookListAdmin from "./admin/BookListAdmin";
 import AddBook from "./admin/AddBook";
 import EditBook from "./admin/editBook";
+import Login from "./components/login"; // Importation du nouvel écran Login
 
 const { width, height } = Dimensions.get("window");
 
@@ -98,7 +99,15 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack.Navigator initialRouteName="BookListAdmin">
+    <Stack.Navigator initialRouteName="Login">
+      {/* Écran de login ajouté comme écran initial */}
+      <Stack.Screen
+        name="Login"
+        component={Login}
+        options={{ headerShown: false }}
+      />
+
+      {/* Écrans utilisateur */}
       <Stack.Screen
         name="BookList"
         component={BookList}
@@ -114,6 +123,8 @@ export default function RootLayout() {
         component={CartScreen}
         options={{ title: "Panier" }}
       />
+
+      {/* Écrans administrateur */}
       <Stack.Screen
         name="BookListAdmin"
         component={BookListAdmin}

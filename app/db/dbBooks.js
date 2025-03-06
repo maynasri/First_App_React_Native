@@ -1,69 +1,85 @@
-// dbBooks.js
 import { Platform } from "react-native";
-import localforage from "localforage";
 
-let SQLite;
-if (Platform.OS !== "web") {
-  SQLite = require("expo-sqlite");
-}
+// Importation directe de SQLite
+const SQLite = require("expo-sqlite");
 
 // Fonction pour ouvrir la base de données
-const openDatabase = Platform.select({
-  web: () => ({
+const openDatabase = () => {
+  if (Platform.OS === "web") {
+    return webFallback();
+  } else {
+    try {
+      // Utilisation directe de SQLite.openDatabase sans vérification
+      return SQLite.openDatabase("BooksDB.db");
+    } catch (error) {
+      console.error(
+        "Erreur critique lors de l'ouverture de la base de données:",
+        error
+      );
+      alert(
+        "Erreur lors de l'accès à la base de données. Veuillez redémarrer l'application."
+      );
+      // Retourner un objet factice pour éviter les crashs
+      return {
+        transaction: () => {
+          console.error("Transaction appelée sur une base de données factice");
+        },
+      };
+    }
+  }
+};
+
+// Simulation pour le web
+const webFallback = () => {
+  console.log("Utilisation de la simulation web");
+  const storage = {};
+
+  return {
     transaction: (callback) => {
-      // Pour le web, on simule une transaction SQL
       callback({
-        executeSql: async (sql, params, successCallback, errorCallback) => {
+        executeSql: (sql, params, successCallback, errorCallback) => {
           try {
             if (sql.startsWith("CREATE TABLE")) {
+              storage.books = storage.books || [];
               console.log("Table created (simulated)");
               successCallback();
             } else if (sql.startsWith("INSERT INTO")) {
-              const tableName = sql.match(/INSERT INTO (\w+)/)[1];
-              let existingData = (await localforage.getItem(tableName)) || [];
-              if (!Array.isArray(existingData)) existingData = [];
+              storage.books = storage.books || [];
+              const newId =
+                storage.books.length > 0
+                  ? Math.max(...storage.books.map((b) => b.id)) + 1
+                  : 1;
 
               const newData = {
-                id: existingData.length + 1,
+                id: newId,
                 title: params[0],
                 description: params[1],
                 image: params[2],
                 price: params[3],
               };
 
-              existingData.push(newData);
-              await localforage.setItem(tableName, existingData);
+              storage.books.push(newData);
               console.log("Data inserted (simulated):", newData);
-              successCallback(null, { rowsAffected: 1, insertId: newData.id });
+              successCallback(null, { rowsAffected: 1, insertId: newId });
             } else if (sql.startsWith("SELECT")) {
-              const tableName = sql.match(/FROM (\w+)/)[1];
-              let data = (await localforage.getItem(tableName)) || [];
-              // Si la requête contient un filtre sur l'ID, on le prend en compte
-              if (sql.includes("WHERE id = ?")) {
-                const idToFilter = params[0];
-                data = data.filter((item) => item.id === idToFilter);
-              }
-              console.log("Data fetched (simulated):", data);
+              storage.books = storage.books || [];
+              console.log("Data fetched (simulated):", storage.books);
               successCallback(null, {
                 rows: {
-                  length: data.length,
-                  item: (i) => data[i],
+                  length: storage.books.length,
+                  item: (i) => storage.books[i],
                 },
               });
             } else if (sql.startsWith("DELETE")) {
-              const tableName = sql.match(/FROM (\w+)/)[1];
-              const id = params[0];
-              let existingData = (await localforage.getItem(tableName)) || [];
-              existingData = existingData.filter((item) => item.id !== id);
-              await localforage.setItem(tableName, existingData);
+              storage.books = storage.books || [];
+              const id = Number(params[0]);
+              storage.books = storage.books.filter((item) => item.id !== id);
               console.log("Data deleted (simulated)");
               successCallback(null, { rowsAffected: 1 });
             } else if (sql.startsWith("UPDATE")) {
-              // CORRECTION : l'ID se trouve à l'index 4
-              const tableName = sql.match(/UPDATE (\w+)/)[1];
-              const id = params[4];
-              let existingData = (await localforage.getItem(tableName)) || [];
-              existingData = existingData.map((item) =>
+              storage.books = storage.books || [];
+              const id = Number(params[4]);
+              storage.books = storage.books.map((item) =>
                 item.id === id
                   ? {
                       id,
@@ -74,7 +90,6 @@ const openDatabase = Platform.select({
                     }
                   : item
               );
-              await localforage.setItem(tableName, existingData);
               console.log("Data updated (simulated)");
               successCallback(null, { rowsAffected: 1 });
             } else {
@@ -87,9 +102,11 @@ const openDatabase = Platform.select({
         },
       });
     },
-  }),
-  default: () => SQLite.openDatabase("BooksDB.db"),
-})();
+  };
+};
+
+// Initialiser la base de données
+const db = openDatabase();
 
 // ------------------------------
 // Fonctions CRUD exportées
@@ -97,7 +114,7 @@ const openDatabase = Platform.select({
 
 // Créer la table Books avec la colonne price
 export const createTable = () => {
-  openDatabase.transaction((tx) => {
+  db.transaction((tx) => {
     tx.executeSql(
       `CREATE TABLE IF NOT EXISTS Books (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -115,7 +132,7 @@ export const createTable = () => {
 
 // Récupérer tous les livres
 export const getBooks = (callback) => {
-  openDatabase.transaction((tx) => {
+  db.transaction((tx) => {
     tx.executeSql(
       "SELECT * FROM Books",
       [],
@@ -137,7 +154,7 @@ export const getBooks = (callback) => {
 
 // Ajouter un livre avec un prix
 export const addBook = (title, description, image, price, callback) => {
-  openDatabase.transaction((tx) => {
+  db.transaction((tx) => {
     tx.executeSql(
       "INSERT INTO Books (title, description, image, price) VALUES (?, ?, ?, ?)",
       [title, description, image, price],
@@ -157,7 +174,7 @@ export const addBook = (title, description, image, price, callback) => {
 export const deleteBook = (id, callback) => {
   const idToDelete = Number(id);
   console.log("Attempting to delete book with ID:", idToDelete);
-  openDatabase.transaction((tx) => {
+  db.transaction((tx) => {
     tx.executeSql(
       "DELETE FROM Books WHERE id = ?",
       [idToDelete],
@@ -167,6 +184,7 @@ export const deleteBook = (id, callback) => {
       },
       (tx, error) => {
         console.log("Error deleting book:", error.message);
+        callback(false);
       }
     );
   });
@@ -183,7 +201,7 @@ export const updateBook = (id, title, description, image, price, callback) => {
     price
   );
 
-  openDatabase.transaction((tx) => {
+  db.transaction((tx) => {
     tx.executeSql(
       "UPDATE Books SET title = ?, description = ?, image = ?, price = ? WHERE id = ?",
       [title, description, image, price, id],
