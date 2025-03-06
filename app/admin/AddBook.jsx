@@ -1,177 +1,230 @@
-import React, { useState } from "react";
+// admin/AddBook.js
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
   TextInput,
-  StyleSheet,
   TouchableOpacity,
+  StyleSheet,
   ScrollView,
+  Alert,
+  ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
-  Alert,
-  Image,
-  ActivityIndicator,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { BookService } from "../db/api";
+import * as ConnectivityService from "../services/ConnectivityService";
+import NetInfo from "@react-native-community/netinfo";
 
-const AddBook = ({ navigation }) => {
+const AddBook = () => {
+  const navigation = useNavigation();
+  const isMounted = useRef(true);
+
+  // États pour le formulaire
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [image, setImage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [prix, setPrix] = useState("");
+  const [image, setImage] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  // Validation du formulaire
-  const isFormValid = () => {
-    if (!title.trim()) {
-      Alert.alert("Erreur", "Le titre est obligatoire");
-      return false;
+  // Effet de montage et nettoyage
+  useEffect(() => {
+    isMounted.current = true;
+
+    // Vérifier la connexion au montage
+    checkConnection();
+
+    // Ajouter un listener pour les changements de connexion
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (isMounted.current) {
+        setIsOnline(state.isConnected && state.isInternetReachable);
+      }
+    });
+
+    // Nettoyer au démontage
+    return () => {
+      isMounted.current = false;
+      unsubscribe();
+    };
+  }, []);
+
+  // Vérifier la connexion
+  const checkConnection = async () => {
+    try {
+      const isConnected = await ConnectivityService.checkConnection();
+      if (isMounted.current) {
+        setIsOnline(isConnected);
+      }
+    } catch (err) {
+      console.error("Error checking connection:", err);
     }
-
-    if (!description.trim()) {
-      Alert.alert("Erreur", "La description est obligatoire");
-      return false;
-    }
-
-    if (!price.trim()) {
-      Alert.alert("Erreur", "Le prix est obligatoire");
-      return false;
-    }
-
-    const priceValue = parseFloat(price.replace(",", "."));
-    if (isNaN(priceValue) || priceValue <= 0) {
-      Alert.alert("Erreur", "Le prix doit être un nombre positif");
-      return false;
-    }
-
-    return true;
   };
 
   // Sélectionner une image
   const pickImage = async () => {
     try {
-      // Demander la permission
-      const permissionResult =
+      const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (!permissionResult.granted) {
+      if (status !== "granted") {
         Alert.alert(
           "Permission refusée",
-          "Vous devez accorder la permission pour sélectionner une image"
+          "Nous avons besoin de votre permission pour accéder à votre galerie"
         );
         return;
       }
 
-      // Lancer le sélecteur d'image
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [4, 3],
+        aspect: [2, 3],
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0].uri) {
+      if (
+        !result.canceled &&
+        result.assets &&
+        result.assets.length > 0 &&
+        isMounted.current
+      ) {
         setImage(result.assets[0].uri);
       }
-    } catch (error) {
-      console.error("Erreur lors de la sélection de l'image:", error);
-      Alert.alert("Erreur", "Impossible de sélectionner l'image");
+    } catch (err) {
+      console.error("Error picking image:", err);
+      if (isMounted.current) {
+        Alert.alert(
+          "Erreur",
+          "Une erreur est survenue lors de la sélection de l'image"
+        );
+      }
     }
+  };
+
+  // Valider le formulaire
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!title.trim()) {
+      newErrors.title = "Le titre est requis";
+    }
+
+    if (!prix.trim()) {
+      newErrors.prix = "Le prix est requis";
+    } else if (isNaN(parseFloat(prix)) || parseFloat(prix) <= 0) {
+      newErrors.prix = "Le prix doit être un nombre positif";
+    }
+
+    if (isMounted.current) {
+      setErrors(newErrors);
+    }
+
+    return Object.keys(newErrors).length === 0;
   };
 
   // Soumettre le formulaire
   const handleSubmit = async () => {
-    if (!isFormValid()) return;
+    if (!validateForm()) return;
+
+    const bookData = {
+      title,
+      description,
+      prix: parseFloat(prix),
+      image: image || "https://via.placeholder.com/150",
+    };
 
     try {
-      setLoading(true);
+      if (isMounted.current) setIsLoading(true);
+      const newBook = await ConnectivityService.addBook(bookData);
 
-      // Création de l'objet livre
-      const bookData = {
-        title: title.trim(),
-        description: description.trim(),
-        price: parseFloat(price.replace(",", ".")),
-        image: image || "https://via.placeholder.com/150x200?text=Livre",
-      };
-
-      // Ajout du livre via le service
-      const result = await BookService.addBook(bookData);
-
-      if (result.success) {
+      if (isMounted.current) {
+        setIsLoading(false);
         Alert.alert("Succès", "Livre ajouté avec succès", [
-          {
-            text: "OK",
-            onPress: () => {
-              // Forcer la navigation vers l'écran précédent avec remplacement
-              navigation.reset({
-                index: 0,
-                routes: [{ name: "BookListAdmin" }],
-              });
-            },
-          },
+          { text: "OK", onPress: () => navigation.goBack() },
         ]);
-      } else {
-        Alert.alert("Erreur", "Échec de l'ajout du livre");
       }
-    } catch (error) {
-      console.error("Erreur lors de l'ajout du livre:", error);
-      Alert.alert("Erreur", "Une erreur est survenue lors de l'ajout du livre");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Error adding book:", err);
+      if (isMounted.current) {
+        setIsLoading(false);
+        Alert.alert(
+          "Erreur",
+          "Une erreur est survenue lors de l'ajout du livre"
+        );
+      }
     }
   };
 
-  // Annuler et revenir en arrière
-  const handleCancel = () => {
-    navigation.goBack();
-  };
-
-  // Rendu du formulaire
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Ajouter un livre</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Indicateur de statut en ligne/hors ligne */}
+        <View
+          style={[
+            styles.statusBar,
+            isOnline ? styles.onlineStatus : styles.offlineStatus,
+          ]}
+        >
+          <Text style={styles.statusText}>
+            {isOnline
+              ? "En ligne (JSON Server)"
+              : "Hors ligne (SQLite) - Les modifications seront synchronisées plus tard"}
+          </Text>
         </View>
 
-        {/* Image du livre */}
-        <TouchableOpacity style={styles.imageContainer} onPress={pickImage}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.bookImage} />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <MaterialIcons
-                name="add-photo-alternate"
-                size={40}
-                color="#999"
-              />
-              <Text style={styles.imagePlaceholderText}>Ajouter une image</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Formulaire */}
         <View style={styles.formContainer}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Titre *</Text>
+          <Text style={styles.title}>Ajouter un nouveau livre</Text>
+
+          {/* Sélection d'image */}
+          <View style={styles.imageContainer}>
+            {image ? (
+              <Image source={{ uri: image }} style={styles.previewImage} />
+            ) : (
+              <View style={styles.imagePlaceholder}>
+                <Ionicons name="image-outline" size={50} color="#ccc" />
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.pickImageButton}
+              onPress={pickImage}
+            >
+              <Ionicons name="camera-outline" size={20} color="#fff" />
+              <Text style={styles.pickImageButtonText}>
+                {image ? "Changer l'image" : "Ajouter une image"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Champs du formulaire */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>
+              Titre <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.title && styles.inputError]}
               value={title}
               onChangeText={setTitle}
               placeholder="Titre du livre"
-              maxLength={100}
             />
+            {errors.title && (
+              <Text style={styles.errorText}>{errors.title}</Text>
+            )}
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description *</Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Description</Text>
             <TextInput
-              style={[styles.input, styles.textarea]}
+              style={[styles.input, styles.textArea]}
               value={description}
               onChangeText={setDescription}
               placeholder="Description du livre"
@@ -181,43 +234,42 @@ const AddBook = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Prix (€) *</Text>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>
+              Prix (€) <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
-              style={styles.input}
-              value={price}
-              onChangeText={setPrice}
-              placeholder="Ex: 12.99"
-              keyboardType="decimal-pad"
+              style={[styles.input, errors.prix && styles.inputError]}
+              value={prix}
+              onChangeText={setPrix}
+              placeholder="Prix du livre"
+              keyboardType="numeric"
             />
+            {errors.prix && <Text style={styles.errorText}>{errors.prix}</Text>}
           </View>
-        </View>
 
-        {/* Boutons d'action */}
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
-            onPress={handleCancel}
-            disabled={loading}
-          >
-            <Text style={styles.cancelButtonText}>Annuler</Text>
-          </TouchableOpacity>
+          {/* Boutons d'action */}
+          <View style={styles.buttonsContainer}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+              disabled={isLoading}
+            >
+              <Text style={styles.cancelButtonText}>Annuler</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.button,
-              styles.submitButton,
-              loading && styles.disabledButton,
-            ]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>Ajouter</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.submitButton, isLoading && styles.disabledButton]}
+              onPress={handleSubmit}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.submitButtonText}>Ajouter</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -227,96 +279,123 @@ const AddBook = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#f9f9f9",
   },
-  scrollContainer: {
-    padding: 16,
+  scrollContent: {
+    flexGrow: 1,
   },
-  header: {
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#333",
-  },
-  imageContainer: {
-    width: "100%",
-    height: 200,
-    marginBottom: 20,
-    borderRadius: 10,
-    overflow: "hidden",
-    backgroundColor: "#f0f0f0",
-  },
-  bookImage: {
-    width: "100%",
-    height: "100%",
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
+  statusBar: {
+    padding: 8,
     alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#ddd",
-    borderStyle: "dashed",
-    borderRadius: 10,
   },
-  imagePlaceholderText: {
-    marginTop: 10,
-    color: "#999",
-    fontSize: 16,
+  onlineStatus: {
+    backgroundColor: "#4CAF50",
+  },
+  offlineStatus: {
+    backgroundColor: "#F44336",
+  },
+  statusText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
   formContainer: {
-    marginBottom: 20,
+    padding: 16,
   },
-  inputGroup: {
-    marginBottom: 16,
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  imageContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  previewImage: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: "#f0f0f0",
+  },
+  imagePlaceholder: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  pickImageButton: {
+    backgroundColor: "#3498db",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  pickImageButtonText: {
+    color: "#fff",
+    marginLeft: 8,
+    fontWeight: "600",
+  },
+  formGroup: {
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
-    fontWeight: "600",
     marginBottom: 8,
+    fontWeight: "500",
     color: "#333",
+  },
+  required: {
+    color: "#e74c3c",
   },
   input: {
     backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
-  textarea: {
-    minHeight: 120,
-    paddingTop: 12,
+  textArea: {
+    minHeight: 100,
+  },
+  inputError: {
+    borderColor: "#e74c3c",
+  },
+  errorText: {
+    color: "#e74c3c",
+    fontSize: 14,
+    marginTop: 4,
   },
   buttonsContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 10,
   },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   cancelButton: {
-    backgroundColor: "#f8f9fa",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    marginRight: 10,
+    flex: 1,
+    backgroundColor: "#95a5a6",
+    borderRadius: 8,
+    padding: 16,
+    alignItems: "center",
+    marginRight: 8,
   },
   cancelButtonText: {
-    color: "#555",
+    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
   submitButton: {
-    backgroundColor: "#3498db",
-    marginLeft: 10,
+    flex: 2,
+    backgroundColor: "#2ecc71",
+    borderRadius: 8,
+    padding: 16,
+    alignItems: "center",
   },
   submitButtonText: {
     color: "#fff",

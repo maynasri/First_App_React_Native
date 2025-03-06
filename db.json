@@ -1,39 +1,32 @@
 {
   "books": [
     {
-      "id": 1,
-      "title": "Les Misérables",
-      "description": "Un roman historique de Victor Hugo publié en 1862, considéré comme l'un des plus grands romans du XIXe siècle.",
-      "image": "https://m.media-amazon.com/images/I/71UNOW3l-gL._AC_UF1000,1000_QL80_.jpg",
-      "price": 12.99
-    },
-    {
-      "id": 2,
+      "id": "1",
       "title": "Le Petit Prince",
-      "description": "Un récit poétique et philosophique sous l'apparence d'un conte pour enfants, écrit par Antoine de Saint-Exupéry.",
-      "image": "https://m.media-amazon.com/images/I/71hB9M-NpZS._AC_UF1000,1000_QL80_.jpg",
-      "price": 9.99
+      "description": "Un livre sur l'amitié, l'amour et la signification de la vie.",
+      "prix": 12.99,
+      "image": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Fe-book-53fde134-2fe7-4156-a0e2-5072aca66353/ImagePicker/a32714c1-055a-42ea-ba85-6b180698d24c.jpeg"
     },
     {
-      "id": 3,
-      "title": "L'Étranger",
-      "description": "Roman d'Albert Camus publié en 1942. Le récit suit l'histoire de Meursault, un Français d'Algérie qui tue un Arabe.",
-      "image": "https://m.media-amazon.com/images/I/61YZ8YY3qJL._AC_UF1000,1000_QL80_.jpg",
-      "price": 8.5
+      "id": "2",
+      "title": "Harry Potter et la Pierre Philosophale",
+      "description": "Le premier livre de la célèbre série Harry Potter.",
+      "prix": 14.5,
+      "image": "https://via.placeholder.com/150/771796"
     },
     {
-      "id": 4,
-      "title": "Candide",
-      "description": "Conte philosophique de Voltaire paru à Genève en janvier 1759. Il a été traduit en plus de cent langues.",
-      "image": "https://m.media-amazon.com/images/I/71jn1iviHjL._AC_UF1000,1000_QL80_.jpg",
-      "price": 7.95
+      "id": "4c51",
+      "title": "Eeeee",
+      "description": "Eeee",
+      "prix": 2,
+      "image": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Fe-book-53fde134-2fe7-4156-a0e2-5072aca66353/ImagePicker/24ca6357-9c78-4142-99d9-4c465d21cb7c.jpeg"
     },
     {
-      "id": 5,
-      "title": "Notre-Dame de Paris",
-      "description": "Roman historique de Victor Hugo publié en 1831, dont l'action se déroule à Paris en 1482, sous le règne de Louis XI.",
-      "image": "https://m.media-amazon.com/images/I/718jhdMg4WL._AC_UF1000,1000_QL80_.jpg",
-      "price": 11.25
+      "id": "0ff4",
+      "title": "Errrrr",
+      "description": "Ffrrr",
+      "prix": 1,
+      "image": "file:///data/user/0/host.exp.exponent/cache/ExperienceData/%2540anonymous%252Fe-book-53fde134-2fe7-4156-a0e2-5072aca66353/ImagePicker/f53332ab-6303-4dba-aa7d-9cb79314d034.jpeg"
     }
   ]
 }

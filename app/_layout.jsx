@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as SplashScreen from "expo-splash-screen";
@@ -18,17 +18,21 @@ import BookDetails from "./book/details";
 import CartScreen from "./book/cart";
 import BookListAdmin from "./admin/BookListAdmin";
 import AddBook from "./admin/AddBook";
-import EditBook from "./admin/editBook";
-import Login from "./components/login"; // Importation du nouvel écran Login
+import EditBook from "./admin/editBook"; // Assurez-vous que le nom du fichier correspond exactement
+import Login from "./components/login";
 
 const { width, height } = Dimensions.get("window");
 
-SplashScreen.preventAutoHideAsync();
+// Prévenez l'auto-masquage du splash screen
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* ignore error */
+});
 
 const Stack = createNativeStackNavigator();
 
-export default function RootLayout() {
-  const [isSplashVisible, setIsSplashVisible] = useState(true);
+// Composant Splash séparé pour éviter les problèmes d'état
+const SplashComponent = ({ onFinish }) => {
+  const isMounted = useRef(true);
 
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.3);
@@ -37,6 +41,7 @@ export default function RootLayout() {
   const textOpacity = useSharedValue(0);
 
   useEffect(() => {
+    // Animation du logo
     scale.value = withSpring(1, { damping: 15, stiffness: 100 });
     translateY.value = withSequence(
       withSpring(0, { damping: 15, stiffness: 100 }),
@@ -48,24 +53,44 @@ export default function RootLayout() {
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
 
-    setTimeout(() => {
-      textOpacity.value = withTiming(1, { duration: 800 });
-      textTranslateY.value = withSpring(0, { damping: 12, stiffness: 100 });
+    // Animation du texte
+    const timer1 = setTimeout(() => {
+      if (isMounted.current) {
+        textOpacity.value = withTiming(1, { duration: 800 });
+        textTranslateY.value = withSpring(0, { damping: 12, stiffness: 100 });
+      }
     }, 400);
 
-    setTimeout(() => {
-      opacity.value = withTiming(0, {
-        duration: 500,
-        easing: Easing.out(Easing.ease),
-      });
-      scale.value = withTiming(0.8, { duration: 500 });
-      translateY.value = withTiming(-height * 0.2, { duration: 500 });
+    // Animation de sortie
+    const timer2 = setTimeout(() => {
+      if (isMounted.current) {
+        opacity.value = withTiming(0, {
+          duration: 500,
+          easing: Easing.out(Easing.ease),
+        });
+        scale.value = withTiming(0.8, { duration: 500 });
+        translateY.value = withTiming(-height * 0.2, { duration: 500 });
+      }
 
-      setTimeout(() => {
-        SplashScreen.hideAsync();
-        setIsSplashVisible(false);
+      // Masquer le splash après un délai
+      const timer3 = setTimeout(() => {
+        if (isMounted.current) {
+          SplashScreen.hideAsync().catch((err) => {
+            console.log("Error hiding splash:", err);
+          });
+          onFinish();
+        }
       }, 500);
+
+      return () => clearTimeout(timer3);
     }, 3000);
+
+    // Nettoyage lors du démontage
+    return () => {
+      isMounted.current = false;
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, []);
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({
@@ -78,26 +103,27 @@ export default function RootLayout() {
     transform: [{ translateY: textTranslateY.value }],
   }));
 
-  if (isSplashVisible) {
-    return (
-      <View style={styles.container}>
-        <Animated.Image
-          source={require("../assets/splash.png")}
-          style={[styles.image, logoAnimatedStyle]}
-          resizeMode="contain"
-        />
-        <View style={styles.textContainer}>
-          <Animated.Text style={[styles.title, textAnimatedStyle]}>
-            Mon Univers de Livres
-          </Animated.Text>
-          <Animated.Text style={[styles.subtitle, textAnimatedStyle]}>
-            Vos livres, vos découvertes
-          </Animated.Text>
-        </View>
+  return (
+    <View style={styles.container}>
+      <Animated.Image
+        source={require("../assets/splash.png")}
+        style={[styles.image, logoAnimatedStyle]}
+        resizeMode="contain"
+      />
+      <View style={styles.textContainer}>
+        <Animated.Text style={[styles.title, textAnimatedStyle]}>
+          Mon Univers de Livres
+        </Animated.Text>
+        <Animated.Text style={[styles.subtitle, textAnimatedStyle]}>
+          Vos livres, vos découvertes
+        </Animated.Text>
       </View>
-    );
-  }
+    </View>
+  );
+};
 
+// Composant AppNavigator séparé pour la navigation
+const AppNavigator = () => {
   return (
     <Stack.Navigator initialRouteName="Login">
       {/* Écran de login ajouté comme écran initial */}
@@ -142,6 +168,22 @@ export default function RootLayout() {
       />
     </Stack.Navigator>
   );
+};
+
+// Composant principal
+export default function RootLayout() {
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
+
+  const handleSplashFinish = () => {
+    setIsSplashVisible(false);
+  };
+
+  // Rendu
+  if (isSplashVisible) {
+    return <SplashComponent onFinish={handleSplashFinish} />;
+  }
+
+  return <AppNavigator />;
 }
 
 const styles = StyleSheet.create({
@@ -165,9 +207,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     color: "#000000",
     letterSpacing: 1,
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 10,
+    textShadow: "0 1px 10px rgba(0, 0, 0, 0.1)",
   },
   subtitle: {
     fontSize: 18,

@@ -1,3 +1,4 @@
+// components/BookCard.js
 import React from "react";
 import {
   View,
@@ -32,8 +33,8 @@ const BookCard = ({ book, onPress, isAdmin = false, onEdit, onDelete }) => {
         </Text>
 
         <Text style={styles.price}>
-          {book.price
-            ? `${parseFloat(book.price).toFixed(2)} €`
+          {book.prix
+            ? `${parseFloat(book.prix).toFixed(2)} €`
             : "Prix non disponible"}
         </Text>
       </View>
